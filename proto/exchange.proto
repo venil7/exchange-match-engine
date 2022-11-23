@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package exchange;
+enum Direction {
+  Buy = 0;
+  Sell = 1;
+}
+
+enum OrderType {
+  Market = 0;
+  Limit = 1;
+}
+
+message OrderRequest {
+  Direction direction = 1;
+  OrderType type  = 2;
+  double amount = 3;
+}
+
+service Exchange {
+  rpc addOrder(OrderRequest) returns (OrderRequest) {}
+}
