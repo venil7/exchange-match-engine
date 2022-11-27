@@ -1,47 +1,26 @@
-use bytes::{Buf, Bytes};
-use exchange_service::{exchange::{exchange_server::ExchangeServer, OrderRequest}, ExchangeService};
-// use tonic::transport::Server;
-use prost::Message;
+pub mod env;
 
+use env::Opt;
+use exchange_service::ExchangeService;
+use structopt::StructOpt;
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //https://www.thorsten-hans.com/grpc-services-in-rust-with-tonic/
-    // let address = "[::1]:8080".parse().unwrap();
-    // let exchange_service = ExchangeService::default();
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
 
-    // Server::builder()
-    //     .add_service(ExchangeServer::new(exchange_service))
-    //     .serve(address)
-    //     .await?;
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
+    let opt = Opt::from_args();
 
-    json_test().await?;
-
-    Ok(())
-}
-
-
-async fn json_test() -> Result<(), Box<dyn std::error::Error>> {
-
-    let data = r#"
-    {
-        "type": 0,
-        "direction": 0,
-        "amount" : 1.23
+    let mut service = ExchangeService::try_new(&opt.pair, &opt.redis).await?;
+    loop {
+        let res = service.next().await?;
+        info!("--> {:?}", res);
     }
-    "#;
 
-    let mut order_request: OrderRequest = serde_json::from_str(data)?;
-
-    let mut buff: Vec<u8> = Vec::new();
-
-    order_request.encode(&mut buff)?;
-
-    order_request = OrderRequest::decode(Bytes::from(buff))?;
-
-    let str = serde_json::to_string_pretty(&order_request)?;
-
-    print!("{json}", json=str);
     Ok(())
 }
