@@ -22,5 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("--> {:?}", res);
     }
 
+    #[allow(unreachable_code)]
     Ok(())
 }

@@ -18,3 +18,20 @@ pub struct OrderRequest {
     pub timestamp: chrono::DateTime<Utc>,
     pub direction: OrderDirection,
 }
+
+pub fn buy_order(price: f64, amount: f64) -> OrderRequest {
+    OrderRequest {
+        price,
+        amount,
+        timestamp: chrono::Utc::now(),
+        direction: OrderDirection::Buy,
+    }
+}
+pub fn sell_order(price: f64, amount: f64) -> OrderRequest {
+    OrderRequest {
+        price,
+        amount,
+        timestamp: chrono::Utc::now(),
+        direction: OrderDirection::Sell,
+    }
+}
