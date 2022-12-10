@@ -1,9 +1,6 @@
-pub mod env;
-
-use env::Opt;
-use exchange_service::ExchangeService;
+use exchange::{domain::env::Opt, service::ExchangeService};
 use structopt::StructOpt;
-use tracing::{info, Level};
+use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
@@ -17,11 +14,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     let mut service = ExchangeService::try_new(&opt.pair, &opt.redis).await?;
-    loop {
-        let res = service.next().await?;
-        info!("--> {:?}", res);
-    }
 
-    #[allow(unreachable_code)]
+    service.run().await?;
+
     Ok(())
 }

@@ -1,12 +1,49 @@
-use crate::order::{OrderDirection, OrderRequest};
 use std::cmp::Ordering;
+
+use chrono::prelude::*;
+
+#[derive(
+    Clone, Copy, Debug, PartialEq, PartialOrd, Default, Eq, serde::Deserialize, serde::Serialize,
+)]
+pub enum OrderDirection {
+    #[default]
+    Buy,
+    Sell,
+}
+
+#[derive(
+    Clone, Copy, Debug, PartialEq, PartialOrd, Default, serde::Deserialize, serde::Serialize,
+)]
+pub struct OrderRequest {
+    pub amount: f64,
+    pub price: f64,
+    pub timestamp: chrono::DateTime<Utc>,
+    pub direction: OrderDirection,
+}
+
+pub fn buy_order(price: f64, amount: f64) -> OrderRequest {
+    OrderRequest {
+        price,
+        amount,
+        timestamp: chrono::Utc::now(),
+        direction: OrderDirection::Buy,
+    }
+}
+pub fn sell_order(price: f64, amount: f64) -> OrderRequest {
+    OrderRequest {
+        price,
+        amount,
+        timestamp: chrono::Utc::now(),
+        direction: OrderDirection::Sell,
+    }
+}
 
 impl Eq for OrderRequest {}
 
 impl Ord for OrderRequest {
     fn cmp(&self, other: &Self) -> Ordering {
         // only compare same directions,
-        if &self.direction == (&other.direction) {
+        if self.direction == other.direction {
             let price_compare = match self.direction {
                 OrderDirection::Buy => self.price.partial_cmp(&other.price),
                 OrderDirection::Sell => other.price.partial_cmp(&self.price),
@@ -26,13 +63,9 @@ impl Ord for OrderRequest {
 #[cfg(test)]
 mod buy_orders_sorting_tests {
 
-    use std::cmp::Ordering;
-
-    use crate::order::buy_order;
-    use crate::order::sell_order;
-    use crate::order::OrderRequest;
-
+    use super::{buy_order, sell_order, OrderRequest};
     use chrono::Days;
+    use std::cmp::Ordering;
 
     #[test]
     fn buy_orders_sorted_by_price_asc_1() {
