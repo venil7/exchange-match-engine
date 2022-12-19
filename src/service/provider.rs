@@ -4,7 +4,7 @@ use redis::{aio::AsyncStream, AsyncCommands, Client, RedisError};
 use std::pin::Pin;
 use tracing::{info, trace};
 
-use crate::domain::{OrderBook, OrderBookSide, OrderRequest};
+use crate::domain::{OrderBook, OrderRequest};
 
 #[async_trait]
 pub trait OrderProvider {
@@ -45,43 +45,41 @@ impl OrderProvider for RedisProvider {
 
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()> {
         trace!("saving {:?}", book);
-        self.connection
-            .set(format!("{pair}/buys", pair = self.pair), &book.buys)
-            .await?;
-        self.connection
-            .set(format!("{pair}/sells", pair = self.pair), &book.sells)
-            .await?;
+        // self.connection
+        //     .set(format!("{pair}/buys", pair = self.pair), &book.buys)
+        //     .await?;
+        // self.connection
+        //     .set(format!("{pair}/sells", pair = self.pair), &book.sells)
+        //     .await?;
+
+        Ok(())
+    }
+
+    async fn load_order_book(&mut self) -> Result<OrderBook> {
+        // let buys: Option<OrderBookSide> = self
+        //     .connection
+        //     .get(format!("{pair}/buys", pair = self.pair))
+        //     .await?;
+
+        // let sells: Option<OrderBookSide> = self
+        //     .connection
+        //     .get(format!("{pair}/sells", pair = self.pair))
+        //     .await?;
+
+        // let buys = buys.unwrap_or_default();
+        // let sells = sells.unwrap_or_default();
+
+        let orderbook = OrderBook::default();
 
         // info!(
         //     "order book: buys:{buys}, sells:{sells}",
         //     buys = buys.len(),
         //     sells = sells.len(),
         // );
-        Ok(())
+
+        Ok(orderbook)
     }
 
-    async fn load_order_book(&mut self) -> Result<OrderBook> {
-        let buys: Option<OrderBookSide> = self
-            .connection
-            .get(format!("{pair}/buys", pair = self.pair))
-            .await?;
-
-        let sells: Option<OrderBookSide> = self
-            .connection
-            .get(format!("{pair}/sells", pair = self.pair))
-            .await?;
-
-        let buys = buys.unwrap_or_default();
-        let sells = sells.unwrap_or_default();
-
-        info!(
-            "order book: buys:{buys}, sells:{sells}",
-            buys = buys.len(),
-            sells = sells.len(),
-        );
-
-        Ok(OrderBook { buys, sells })
-    }
     async fn mark_processed(&mut self, _orders: &[OrderRequest]) -> Result<()> {
         todo!()
     }
