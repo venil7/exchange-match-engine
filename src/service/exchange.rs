@@ -20,11 +20,10 @@ impl ExchangeService<RedisProvider> {
         })
     }
 
-    async fn match_order(&mut self, order: OrderRequest) -> Result<()> {
-        if let Some(orders) = self.book.match_order(order) {
-            self.provider.mark_processed(&orders).await?;
-        };
-        // self.provider.save_order_book(&self.book).await?;
+    async fn process_order(&mut self, order: OrderRequest) -> Result<()> {
+        self.book.add_order(order);
+        let processed = self.book.match_and_process_orders();
+        self.provider.mark_processed(&processed).await?;
         Ok(())
     }
 
@@ -32,7 +31,7 @@ impl ExchangeService<RedisProvider> {
         loop {
             match self.provider.next_order().await {
                 Ok(order) => {
-                    self.match_order(order).await?;
+                    self.process_order(order).await?;
                 }
                 Err(err) => error!("{err}", err = err),
             }

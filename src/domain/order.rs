@@ -1,8 +1,8 @@
 use chrono::prelude::*;
-use redis::{ErrorKind, FromRedisValue, RedisError, ToRedisArgs};
+use redis::{ErrorKind, FromRedisValue, RedisError};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use tracing::trace;
+// use tracing::trace;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
 pub enum OrderDirection {
@@ -11,7 +11,7 @@ pub enum OrderDirection {
     Sell,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct OrderRequest {
     pub amount: i64,
     pub price: i64,
@@ -40,17 +40,16 @@ impl Eq for OrderRequest {}
 
 impl Ord for OrderRequest {
     fn cmp(&self, other: &Self) -> Ordering {
-        // only compare same directions,
         if self.direction == other.direction {
-            let price_compare = match self.direction {
+            match self.direction {
                 OrderDirection::Buy => self.price.partial_cmp(&other.price),
                 OrderDirection::Sell => other.price.partial_cmp(&self.price),
-            };
-            match price_compare {
-                Some(Ordering::Equal) => self.timestamp.cmp(&other.timestamp),
-                Some(other) => other,
-                _ => self.timestamp.cmp(&other.timestamp),
             }
+            .map(|direction_ordering| match direction_ordering {
+                Ordering::Equal => self.timestamp.cmp(&other.timestamp),
+                other => other,
+            })
+            .unwrap_or_else(|| self.timestamp.cmp(&other.timestamp))
         } else {
             // otherwise fallback at timestamp cmp
             self.timestamp.cmp(&other.timestamp)
@@ -58,34 +57,34 @@ impl Ord for OrderRequest {
     }
 }
 
-impl ToRedisArgs for OrderDirection {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite,
-    {
-        match self {
-            OrderDirection::Buy => out.write_arg(b"buy"),
-            OrderDirection::Sell => out.write_arg(b"sell"),
-        }
-    }
-}
+// impl ToRedisArgs for OrderDirection {
+//     fn write_redis_args<W>(&self, out: &mut W)
+//     where
+//         W: ?Sized + redis::RedisWrite,
+//     {
+//         match self {
+//             OrderDirection::Buy => out.write_arg(b"buy"),
+//             OrderDirection::Sell => out.write_arg(b"sell"),
+//         }
+//     }
+// }
 
-impl ToRedisArgs for OrderRequest {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite,
-    {
-        let bin = bincode::serialize(self).unwrap();
-        out.write_arg(&bin);
-        trace!("serialized {:?}", self);
-    }
-}
+// impl ToRedisArgs for OrderRequest {
+//     fn write_redis_args<W>(&self, out: &mut W)
+//     where
+//         W: ?Sized + redis::RedisWrite,
+//     {
+//         let bin = bincode::serialize(self).unwrap();
+//         out.write_arg(&bin);
+//         trace!("serialized {:?}", self);
+//     }
+// }
 
 impl FromRedisValue for OrderRequest {
-    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
-        match v {
+    fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
+        match value {
             redis::Value::Data(bytes) => {
-                let order = bincode::deserialize(bytes).or(serde_json::from_slice(bytes));
+                let order = bincode::deserialize(bytes).or_else(|_| serde_json::from_slice(bytes));
                 match order {
                     Ok(order) => Ok(order),
                     _ => Err(RedisError::from((ErrorKind::IoError, "failed to decode"))),
