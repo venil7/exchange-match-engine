@@ -4,14 +4,14 @@ use redis::{aio::AsyncStream, AsyncCommands, Client, RedisError};
 use std::pin::Pin;
 use tracing::{info, trace};
 
-use crate::domain::{OrderBook, OrderRequest};
+use crate::domain::{OrderBook, OrderRequest, Tx};
 
 #[async_trait]
 pub trait OrderProvider {
     async fn next_order(&mut self) -> Result<OrderRequest>;
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()>;
     async fn load_order_book(&mut self) -> Result<OrderBook>;
-    async fn mark_processed(&mut self, _orders: &[OrderRequest]) -> Result<()>;
+    async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()>;
 }
 
 pub struct RedisProvider {
@@ -56,31 +56,14 @@ impl OrderProvider for RedisProvider {
     }
 
     async fn load_order_book(&mut self) -> Result<OrderBook> {
-        // let buys: Option<OrderBookSide> = self
-        //     .connection
-        //     .get(format!("{pair}/buys", pair = self.pair))
-        //     .await?;
-
-        // let sells: Option<OrderBookSide> = self
-        //     .connection
-        //     .get(format!("{pair}/sells", pair = self.pair))
-        //     .await?;
-
-        // let buys = buys.unwrap_or_default();
-        // let sells = sells.unwrap_or_default();
-
         let orderbook = OrderBook::default();
-
-        // info!(
-        //     "order book: buys:{buys}, sells:{sells}",
-        //     buys = buys.len(),
-        //     sells = sells.len(),
-        // );
-
         Ok(orderbook)
     }
 
-    async fn mark_processed(&mut self, _orders: &[OrderRequest]) -> Result<()> {
-        todo!()
+    async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()> {
+        for tx in txs {
+            info!("processed: {tx}", tx = tx);
+        }
+        Ok(())
     }
 }

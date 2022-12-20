@@ -1,10 +1,10 @@
-use super::{order::OrderRequest, OrderDirection, Spread};
+use super::{order::OrderRequest, OrderDirection, Spread, Tx};
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
 };
-use tracing::info;
+use tracing::{info, trace};
 
 pub type PricePoint = BTreeSet<OrderRequest>;
 pub type OrderBookSide = BTreeMap<i64, PricePoint>;
@@ -12,7 +12,7 @@ pub type OrderBookSide = BTreeMap<i64, PricePoint>;
 trait OrderPriceSet {
     fn total_amount(&self) -> i64;
     fn to_vec(self) -> Vec<OrderRequest>;
-    fn consume(&mut self, rhs: &mut Self) -> Vec<OrderRequest>;
+    fn consume(&mut self, other: &mut Self) -> Vec<Tx>;
 }
 impl OrderPriceSet for PricePoint {
     fn total_amount(&self) -> i64 {
@@ -26,28 +26,40 @@ impl OrderPriceSet for PricePoint {
 
     // lhs is assumed to be bigger in total amount
     // than rhs when this fn is called
-    // returns consumed orders
-    fn consume(&mut self, rhs: &mut Self) -> Vec<OrderRequest> {
-        let mut processed = vec![];
-        while !self.is_empty() && !rhs.is_empty() {
-            let mut order_lhs = self.pop_first().unwrap();
-            let mut order_rhs = rhs.pop_first().unwrap();
-            match order_lhs.amount.cmp(&order_rhs.amount) {
-                Ordering::Equal => processed.append(&mut vec![order_lhs, order_rhs]),
+    // returns txs for consumed orders
+    fn consume(&mut self, other: &mut Self) -> Vec<Tx> {
+        let mut txs = vec![];
+        while !self.is_empty() && !other.is_empty() {
+            let mut lhs = self.pop_first().unwrap();
+            let mut rhs = other.pop_first().unwrap();
+            match lhs.amount.cmp(&rhs.amount) {
+                Ordering::Equal => txs.push(Tx::new(lhs, rhs)),
                 Ordering::Less => {
-                    order_rhs.amount -= order_lhs.amount;
-                    processed.push(order_lhs);
-                    rhs.insert(order_rhs);
+                    rhs.amount -= lhs.amount;
+                    txs.push(Tx::new(
+                        lhs,
+                        OrderRequest {
+                            amount: lhs.amount,
+                            ..rhs
+                        },
+                    ));
+                    other.insert(rhs);
                 }
                 Ordering::Greater => {
-                    order_lhs.amount -= order_rhs.amount;
-                    processed.push(order_rhs);
-                    self.insert(order_lhs);
+                    lhs.amount -= rhs.amount;
+                    txs.push(Tx::new(
+                        OrderRequest {
+                            amount: rhs.amount,
+                            ..lhs
+                        },
+                        rhs,
+                    ));
+                    self.insert(lhs);
                 }
             }
         }
 
-        processed
+        txs
     }
 }
 
@@ -79,28 +91,44 @@ impl OrderBook {
     }
 
     // returns processed orders
-    pub fn match_and_process_orders(&mut self) -> Vec<OrderRequest> {
-        let mut processed = vec![];
+    pub fn match_and_process_orders(&mut self) -> Vec<Tx> {
+        let mut txs = vec![];
         let mut spread = self.spread();
         while spread.overlaping() {
-            let (_, mut buy) = self.buys.pop_last().unwrap();
+            trace!("order book spread overlap: {spread:?}", spread = spread);
+            let (price, mut buy) = self.buys.pop_last().unwrap();
             let (_, mut sell) = self.sells.pop_last().unwrap();
+            trace!(
+                "transacting at {price}, buys total {buys_total}, sells total {sells_total}",
+                price = price,
+                buys_total = buy.total_amount(),
+                sells_total = sell.total_amount()
+            );
+
             match buy.total_amount().cmp(&sell.total_amount()) {
                 Ordering::Equal => {
-                    processed.append(&mut buy.to_vec());
-                    processed.append(&mut sell.to_vec());
+                    txs.append(&mut buy.consume(&mut sell));
+                    // txs.append(&mut buy.to_vec());
+                    // txs.append(&mut sell.to_vec());
                 }
                 //theres more buy orders, then sell
-                Ordering::Greater => processed.append(&mut buy.consume(&mut sell)),
+                Ordering::Greater => {
+                    txs.append(&mut buy.consume(&mut sell));
+                    self.buys.insert(price, buy);
+                }
                 //theres more sell orders, then buy
-                Ordering::Less => processed.append(&mut sell.consume(&mut buy)),
+                Ordering::Less => {
+                    txs.append(&mut sell.consume(&mut buy));
+                    self.sells.insert(price, sell);
+                }
             }
             spread = self.spread();
         }
-        processed
+        txs
     }
 
     pub fn add_order(&mut self, order: OrderRequest) {
+        trace!("incoming order: {order}", order = order);
         match order.direction {
             OrderDirection::Buy => self.buys.entry(order.price).or_default().insert(order),
             OrderDirection::Sell => self.sells.entry(order.price).or_default().insert(order),

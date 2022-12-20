@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use redis::{ErrorKind, FromRedisValue, RedisError};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::Display};
 // use tracing::trace;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
@@ -17,6 +17,17 @@ pub struct OrderRequest {
     pub price: i64,
     pub timestamp: chrono::DateTime<Utc>,
     pub direction: OrderDirection,
+}
+
+impl Display for OrderRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "{direction:?} {amount}@{price}",
+            direction = self.direction,
+            amount = self.amount,
+            price = self.price
+        ))
+    }
 }
 
 pub fn buy_order(price: i64, amount: i64) -> OrderRequest {

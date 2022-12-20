@@ -22,8 +22,8 @@ impl ExchangeService<RedisProvider> {
 
     async fn process_order(&mut self, order: OrderRequest) -> Result<()> {
         self.book.add_order(order);
-        let processed = self.book.match_and_process_orders();
-        self.provider.mark_processed(&processed).await?;
+        let txs = self.book.match_and_process_orders();
+        self.provider.mark_processed(&txs).await?;
         Ok(())
     }
 
