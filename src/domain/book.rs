@@ -9,19 +9,24 @@ use tracing::{info, trace};
 pub type PricePoint = BTreeSet<OrderRequest>;
 pub type OrderBookSide = BTreeMap<i64, PricePoint>;
 
-trait OrderPriceSet {
+pub trait OrderBookSideImpl {
+    fn to_string(&self) -> String;
+}
+pub trait PricePointImpl {
     fn total_amount(&self) -> i64;
-    fn to_vec(self) -> Vec<OrderRequest>;
     fn consume(&mut self, other: &mut Self) -> Vec<Tx>;
 }
-impl OrderPriceSet for PricePoint {
+impl OrderBookSideImpl for OrderBookSide {
+    fn to_string(&self) -> String {
+        self.iter()
+            .map(|(k, v)| format!("{amount}@{price},", amount = v.total_amount(), price = k))
+            .collect()
+    }
+}
+impl PricePointImpl for PricePoint {
     fn total_amount(&self) -> i64 {
         self.iter()
             .fold(0, |acc, order: &OrderRequest| acc + order.amount)
-    }
-
-    fn to_vec(self) -> Vec<OrderRequest> {
-        self.into_iter().collect()
     }
 
     // lhs is assumed to be bigger in total amount
@@ -76,11 +81,11 @@ impl OrderBook {
         }
     }
 
-    fn _report(&self) {
+    pub fn report(&self) {
         info!(
-            "order book: buys:{buys}, sells:{sells}",
-            buys = self.buys.len(),
-            sells = self.sells.len(),
+            "order book:\nbuys:{buys}\nsells:{sells}",
+            buys = self.buys.to_string(),
+            sells = self.sells.to_string(),
         );
     }
 
@@ -95,7 +100,6 @@ impl OrderBook {
         let mut txs = vec![];
         let mut spread = self.spread();
         while spread.overlaping() {
-            trace!("order book spread overlap: {spread:?}", spread = spread);
             let (price, mut buy) = self.buys.pop_last().unwrap();
             let (_, mut sell) = self.sells.pop_last().unwrap();
             trace!(
@@ -106,11 +110,7 @@ impl OrderBook {
             );
 
             match buy.total_amount().cmp(&sell.total_amount()) {
-                Ordering::Equal => {
-                    txs.append(&mut buy.consume(&mut sell));
-                    // txs.append(&mut buy.to_vec());
-                    // txs.append(&mut sell.to_vec());
-                }
+                Ordering::Equal => txs.append(&mut buy.consume(&mut sell)),
                 //theres more buy orders, then sell
                 Ordering::Greater => {
                     txs.append(&mut buy.consume(&mut sell));
@@ -128,10 +128,17 @@ impl OrderBook {
     }
 
     pub fn add_order(&mut self, order: OrderRequest) {
-        trace!("incoming order: {order}", order = order);
         match order.direction {
-            OrderDirection::Buy => self.buys.entry(order.price).or_default().insert(order),
-            OrderDirection::Sell => self.sells.entry(order.price).or_default().insert(order),
+            OrderDirection::Buy => self
+                .buys
+                .entry(order.price)
+                .or_insert_with(BTreeSet::new)
+                .insert(order),
+            OrderDirection::Sell => self
+                .sells
+                .entry(order.price)
+                .or_insert_with(BTreeSet::new)
+                .insert(order),
         };
     }
 }
@@ -140,8 +147,26 @@ impl OrderBook {
 mod order_book_tests {
 
     use super::OrderBook;
-    use crate::domain::{buy_order, sell_order, OrderRequest, Spread};
+    use crate::domain::{buy_order, sell_order, OrderRequest, PricePointImpl, Spread};
     use chrono::Days;
+    use uuid::Uuid;
+
+    #[test]
+    fn order_total_amount_test() {
+        let buy1 = buy_order(1, 3);
+        let buy2 = OrderRequest {
+            id: Uuid::new_v4(),
+            amount: 2,
+            ..buy1
+        };
+
+        let mut book: OrderBook = Default::default();
+        book.add_order(buy1);
+        book.add_order(buy2);
+
+        let total = book.buys.pop_first().unwrap().1.total_amount();
+        assert_eq!(total, buy1.amount + buy2.amount);
+    }
 
     #[test]
     fn orderbook_nonoverlaping_spread_test() {

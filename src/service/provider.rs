@@ -34,7 +34,7 @@ impl RedisProvider {
 impl OrderProvider for RedisProvider {
     async fn next_order(&mut self) -> Result<OrderRequest> {
         let key = format!("{pair}/orders", pair = self.pair);
-        info!("send orders to {queue}", queue = key);
+        trace!("send orders to {queue}", queue = key);
         let payload: Result<(String, OrderRequest), RedisError> =
             self.connection.blpop(key, 0).await;
         match payload {
@@ -44,20 +44,22 @@ impl OrderProvider for RedisProvider {
     }
 
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()> {
-        trace!("saving {:?}", book);
-        // self.connection
-        //     .set(format!("{pair}/buys", pair = self.pair), &book.buys)
-        //     .await?;
-        // self.connection
-        //     .set(format!("{pair}/sells", pair = self.pair), &book.sells)
-        //     .await?;
-
+        let bytes = bincode::serialize(book).unwrap();
+        self.connection
+            .set(format!("{pair}/order_book", pair = self.pair), &bytes)
+            .await?;
+        book.report();
         Ok(())
     }
 
     async fn load_order_book(&mut self) -> Result<OrderBook> {
-        let orderbook = OrderBook::default();
-        Ok(orderbook)
+        let bytes: Vec<u8> = self
+            .connection
+            .get(format!("{pair}/order_book", pair = self.pair))
+            .await?;
+        let book: OrderBook = bincode::deserialize(&bytes).unwrap_or_default();
+        book.report();
+        Ok(book)
     }
 
     async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()> {

@@ -1,7 +1,7 @@
 use super::{OrderProvider, RedisProvider};
 use crate::domain::{OrderBook, OrderRequest};
 use anyhow::Result;
-use tracing::error;
+use tracing::{error, trace};
 
 pub struct ExchangeService<Provider: OrderProvider> {
     pub pair: String,
@@ -21,9 +21,11 @@ impl ExchangeService<RedisProvider> {
     }
 
     async fn process_order(&mut self, order: OrderRequest) -> Result<()> {
+        trace!("incoming order: {order}", order = order);
         self.book.add_order(order);
         let txs = self.book.match_and_process_orders();
         self.provider.mark_processed(&txs).await?;
+        self.provider.save_order_book(&self.book).await?;
         Ok(())
     }
 

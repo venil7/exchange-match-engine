@@ -2,17 +2,18 @@ use chrono::prelude::*;
 use redis::{ErrorKind, FromRedisValue, RedisError};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt::Display};
-// use tracing::trace;
+use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
 pub enum OrderDirection {
     #[default]
     Buy,
     Sell,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Hash, Default, PartialEq, Eq, PartialOrd, Deserialize, Serialize)]
 pub struct OrderRequest {
+    pub id: Uuid,
     pub amount: i64,
     pub price: i64,
     pub timestamp: chrono::DateTime<Utc>,
@@ -34,6 +35,7 @@ pub fn buy_order(price: i64, amount: i64) -> OrderRequest {
     OrderRequest {
         price,
         amount,
+        id: Uuid::new_v4(),
         timestamp: chrono::Utc::now(),
         direction: OrderDirection::Buy,
     }
@@ -42,54 +44,31 @@ pub fn sell_order(price: i64, amount: i64) -> OrderRequest {
     OrderRequest {
         price,
         amount,
+        id: Uuid::new_v4(),
         timestamp: chrono::Utc::now(),
         direction: OrderDirection::Sell,
     }
 }
 
-impl Eq for OrderRequest {}
-
 impl Ord for OrderRequest {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.direction == other.direction {
-            match self.direction {
-                OrderDirection::Buy => self.price.partial_cmp(&other.price),
-                OrderDirection::Sell => other.price.partial_cmp(&self.price),
+            return match self.direction {
+                OrderDirection::Buy => self.price.cmp(&other.price),
+                OrderDirection::Sell => other.price.cmp(&self.price),
             }
-            .map(|direction_ordering| match direction_ordering {
-                Ordering::Equal => self.timestamp.cmp(&other.timestamp),
-                other => other,
-            })
-            .unwrap_or_else(|| self.timestamp.cmp(&other.timestamp))
-        } else {
-            // otherwise fallback at timestamp cmp
-            self.timestamp.cmp(&other.timestamp)
+            .then(self.timestamp.cmp(&other.timestamp))
+            .then(self.amount.cmp(&other.amount))
+            .then(self.id.cmp(&other.id));
         }
+        // otherwise fallback at timestamp cmp
+        self.id
+            .cmp(&other.id)
+            .then(self.timestamp.cmp(&other.timestamp))
+            .then(self.price.cmp(&other.price))
+            .then(self.amount.cmp(&other.amount))
     }
 }
-
-// impl ToRedisArgs for OrderDirection {
-//     fn write_redis_args<W>(&self, out: &mut W)
-//     where
-//         W: ?Sized + redis::RedisWrite,
-//     {
-//         match self {
-//             OrderDirection::Buy => out.write_arg(b"buy"),
-//             OrderDirection::Sell => out.write_arg(b"sell"),
-//         }
-//     }
-// }
-
-// impl ToRedisArgs for OrderRequest {
-//     fn write_redis_args<W>(&self, out: &mut W)
-//     where
-//         W: ?Sized + redis::RedisWrite,
-//     {
-//         let bin = bincode::serialize(self).unwrap();
-//         out.write_arg(&bin);
-//         trace!("serialized {:?}", self);
-//     }
-// }
 
 impl FromRedisValue for OrderRequest {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
