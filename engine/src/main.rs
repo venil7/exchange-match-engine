@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let opt = Opt::from_args();
 
-    let mut service = ExchangeService::try_new(&opt.pair, &opt.redis).await?;
+    let mut service = ExchangeService::try_new(&opt.ticker, &opt.redis).await?;
 
     service.run().await?;
 

@@ -4,17 +4,17 @@ use anyhow::Result;
 use tracing::{error, trace};
 
 pub struct ExchangeService<Provider: OrderProvider> {
-    pub pair: String,
+    pub ticker: String,
     pub book: OrderBook,
     provider: Provider,
 }
 
 impl ExchangeService<RedisProvider> {
-    pub async fn try_new(pair: &str, url: &str) -> Result<Self> {
-        let mut provider = RedisProvider::try_new(pair, url).await?;
+    pub async fn try_new(ticker: &str, url: &str) -> Result<Self> {
+        let mut provider = RedisProvider::try_new(ticker, url).await?;
         let book = provider.load_order_book().await?;
         Ok(Self {
-            pair: pair.into(),
+            ticker: ticker.into(),
             book,
             provider,
         })

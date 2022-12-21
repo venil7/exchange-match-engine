@@ -15,16 +15,16 @@ pub trait OrderProvider {
 }
 
 pub struct RedisProvider {
-    pair: String,
+    ticker: String,
     connection: redis::aio::Connection<Pin<Box<dyn AsyncStream + Send + Sync>>>,
 }
 
 impl RedisProvider {
-    pub async fn try_new(pair: &str, url: &str) -> Result<Self> {
+    pub async fn try_new(ticker: &str, url: &str) -> Result<Self> {
         let connection = Client::open(url)?.get_async_connection().await?;
         info!("Connected to {url}", url = url);
         Ok(Self {
-            pair: pair.into(),
+            ticker: ticker.into(),
             connection,
         })
     }
@@ -33,7 +33,7 @@ impl RedisProvider {
 #[async_trait]
 impl OrderProvider for RedisProvider {
     async fn next_order(&mut self) -> Result<OrderRequest> {
-        let key = format!("{pair}/orders", pair = self.pair);
+        let key = format!("{ticker}/orders", ticker = self.ticker);
         trace!("send orders to {queue}", queue = key);
         let payload: Result<(String, OrderRequest), RedisError> =
             self.connection.blpop(key, 0).await;
@@ -46,7 +46,7 @@ impl OrderProvider for RedisProvider {
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()> {
         let bytes = bincode::serialize(book).unwrap();
         self.connection
-            .set(format!("{pair}/order_book", pair = self.pair), &bytes)
+            .set(format!("{ticker}/order_book", ticker = self.ticker), &bytes)
             .await?;
         book.report();
         Ok(())
@@ -55,7 +55,7 @@ impl OrderProvider for RedisProvider {
     async fn load_order_book(&mut self) -> Result<OrderBook> {
         let bytes: Vec<u8> = self
             .connection
-            .get(format!("{pair}/order_book", pair = self.pair))
+            .get(format!("{ticker}/order_book", ticker = self.ticker))
             .await?;
         let book: OrderBook = bincode::deserialize(&bytes).unwrap_or_default();
         book.report();

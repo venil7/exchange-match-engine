@@ -1,0 +1,5 @@
+{
+  "redis": "redis://localhost:6379",
+  "ticker": "abc",
+  "port": 4041
+}
