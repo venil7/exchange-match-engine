@@ -5,6 +5,14 @@ use std::{cmp::Ordering, fmt::Display};
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
+pub enum OrderState {
+    #[default]
+    Pending,
+    Partial,
+    Complete,
+    Cancelled,
+}
+#[derive(Clone, Copy, Debug, Hash, PartialEq, PartialOrd, Default, Eq, Deserialize, Serialize)]
 pub enum OrderDirection {
     #[default]
     Buy,
@@ -17,6 +25,7 @@ pub struct OrderRequest {
     pub amount: i64,
     pub price: i64,
     pub timestamp: chrono::DateTime<Utc>,
+    pub state: OrderState,
     pub direction: OrderDirection,
 }
 
@@ -36,6 +45,7 @@ pub fn buy_order(price: i64, amount: i64) -> OrderRequest {
         price,
         amount,
         id: Uuid::new_v4(),
+        state: OrderState::Pending,
         timestamp: chrono::Utc::now(),
         direction: OrderDirection::Buy,
     }
@@ -45,8 +55,17 @@ pub fn sell_order(price: i64, amount: i64) -> OrderRequest {
         price,
         amount,
         id: Uuid::new_v4(),
+        state: OrderState::Pending,
         timestamp: chrono::Utc::now(),
         direction: OrderDirection::Sell,
+    }
+}
+impl OrderRequest {
+    pub fn with_state(&self, state: OrderState) -> Self {
+        OrderRequest {
+            state,
+            ..self.clone()
+        }
     }
 }
 

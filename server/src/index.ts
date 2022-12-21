@@ -10,8 +10,6 @@ import { createGetRedisApi } from "./service/redis";
 // @ts-expect-error
 global.server?.close();
 
-const PORT = 4040;
-
 const trySync = <A>(func: Lazy<A>) =>
   TE.tryCatch(async () => func(), fromJsError);
 
@@ -27,7 +25,7 @@ await pipe(
       () =>
         //@ts-expect-error
         (global.server = app.listen(env.port, () =>
-          console.log(`listening port: ${env.port}, ${new Date()}`)
+          console.log(`listening port ${env.port}, ${new Date()}`)
         ))
     )
   )

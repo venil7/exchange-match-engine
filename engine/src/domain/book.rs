@@ -92,19 +92,19 @@ impl OrderBook {
     pub fn spread(&self) -> Spread {
         let b = self.buys.last_key_value().map(|(&x, _)| x);
         let s = self.sells.first_key_value().map(|(&x, _)| x);
+        trace!("spread {spread:?}", spread = (b, s));
         Spread(b, s)
     }
 
     // returns processed orders
     pub fn match_and_process_orders(&mut self) -> Vec<Tx> {
         let mut txs = vec![];
-        let mut spread = self.spread();
-        while spread.overlaping() {
-            let (price, mut buy) = self.buys.pop_last().unwrap();
-            let (_, mut sell) = self.sells.pop_last().unwrap();
+        while self.spread().overlaping() {
+            let (buy_price, mut buy) = self.buys.pop_last().unwrap();
+            let (sell_price, mut sell) = self.sells.pop_first().unwrap();
             trace!(
-                "transacting at {price}, buys total {buys_total}, sells total {sells_total}",
-                price = price,
+                "Tx at {price}, buy offers {buys_total}, sell offers {sells_total}",
+                price = i64::max(buy_price, sell_price),
                 buys_total = buy.total_amount(),
                 sells_total = sell.total_amount()
             );
@@ -114,15 +114,14 @@ impl OrderBook {
                 //theres more buy orders, then sell
                 Ordering::Greater => {
                     txs.append(&mut buy.consume(&mut sell));
-                    self.buys.insert(price, buy);
+                    self.buys.insert(buy_price, buy);
                 }
                 //theres more sell orders, then buy
                 Ordering::Less => {
                     txs.append(&mut sell.consume(&mut buy));
-                    self.sells.insert(price, sell);
+                    self.sells.insert(buy_price, sell);
                 }
             }
-            spread = self.spread();
         }
         txs
     }

@@ -17,6 +17,9 @@ export type RedisApi = {
   enqueue: <T extends {}>(
     decoder: t.Type<T, string, string>
   ) => (key: string, obj: T) => ActionResult<T>;
+  lrange: <T extends {}>(
+    itemDecoder: t.Type<T, string>
+  ) => (key: string, l?: number, r?: number) => ActionResult<T[]>;
 };
 
 const fromClient = (client: RedisClient): RedisApi => {
@@ -52,6 +55,15 @@ const fromClient = (client: RedisClient): RedisApi => {
             TE.tryCatch(() => client.lPush(queueName, val), fromJsError)
           ),
           TE.map(() => obj)
+        );
+      },
+
+    lrange:
+      <T extends {}>(itemDecoder: t.Type<T, string>) =>
+      (key: string, l = 0, r = -1) => {
+        return pipe(
+          TE.tryCatch(() => client.lRange(key, l, r), fromJsError),
+          TE.chain(fromDecoder(t.array(itemDecoder)))
         );
       },
   };

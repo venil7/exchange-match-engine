@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use chrono::Utc;
+use redis::ToRedisArgs;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,10 +17,22 @@ pub struct Tx {
 impl Tx {
     pub fn new(lhs: OrderRequest, rhs: OrderRequest) -> Tx {
         Tx {
-            id: Uuid::new_v4(),
             lhs,
             rhs,
+            id: Uuid::new_v4(),
             timestamp: chrono::Utc::now(),
+        }
+    }
+}
+
+impl ToRedisArgs for Tx {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        match serde_json::to_string(&self) {
+            Ok(str) => out.write_arg(&str.as_bytes()),
+            _ => (),
         }
     }
 }

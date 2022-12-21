@@ -63,8 +63,10 @@ impl OrderProvider for RedisProvider {
     }
 
     async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()> {
+        let key = &format!("{ticker}/txs", ticker = self.ticker);
         for tx in txs {
             info!("processed: {tx}", tx = tx);
+            self.connection.rpush(key, tx).await?;
         }
         Ok(())
     }
