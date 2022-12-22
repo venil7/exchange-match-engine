@@ -21,7 +21,7 @@ export const createPostOrder = (order: Order): ActionResult<OrderRequest> =>
     chain(({ ticker, port }) =>
       fetchPost(
         `http://localhost:${port}/api/order/${ticker}`,
-        OrderDecoder.decode(order)
+        OrderDecoder.encode(order)
       )
     ),
     chain(fromDecoder(OrderRequestDecoder))

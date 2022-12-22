@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    Button,
     Card,
     CardBody, CardHeader,
     CardSubtitle, CardTitle
@@ -9,10 +10,11 @@
   export let error: AppError;
 </script>
 
-<Card class="mb-3">
+<Card>
   <CardHeader>
     <CardTitle>{error.type} Error</CardTitle>
   </CardHeader>
+  
   <CardBody>
     <CardSubtitle> {error.msg}</CardSubtitle>
   </CardBody>

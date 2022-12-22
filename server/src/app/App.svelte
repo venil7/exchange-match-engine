@@ -8,7 +8,7 @@
 </script>
 
 <main>
-  <Row>
+  <Row class="mt-3">
     <Col>
       <StoreData store={prices} let:data={data}>
         <Prices data={data} />
@@ -16,7 +16,7 @@
     </Col>
     <Col>
       <StoreData store={orders} let:data={data}>
-        <Orders data={data} />
+        <Orders data={data} onAdd={orders.submit}/>
       </StoreData>
     </Col>
   </Row>
