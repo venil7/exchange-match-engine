@@ -12,4 +12,6 @@ export const TxDecoder = t.type(
   "tx"
 );
 
+export const TxsDecoder = t.array(TxDecoder);
+
 export const TxFromStringDecoder = JsonFromString.pipe(TxDecoder);

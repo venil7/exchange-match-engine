@@ -1,4 +1,5 @@
 import bodyParser from "body-parser";
+import cors from "cors";
 import express from "express";
 import { Lazy, pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
@@ -18,7 +19,12 @@ await pipe(
   TE.bind("env", () => createGetEnv("./conf.json")),
   TE.bind("redis", ({ env }) => createGetRedisApi(env)),
   TE.bind("app", (appCtx) =>
-    TE.of(express().use(bodyParser.json()).use("/api", ApiEndpoint(appCtx)))
+    TE.of(
+      express()
+        .use(bodyParser.json())
+        .use(cors())
+        .use("/api", ApiEndpoint(appCtx))
+    )
   ),
   TE.chain(({ app, env }) =>
     trySync(
