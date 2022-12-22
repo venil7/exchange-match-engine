@@ -3,6 +3,8 @@ import { chain, tryCatch } from "fp-ts/lib/TaskEither";
 import { Action, ActionResult } from "../../domain/action";
 import { fromJsError } from "../../domain/error";
 
+const HEADERS: [string, string][] = [["content-type", "application/json"]];
+
 const createFetch = (params: RequestInit = {}): Action<string, unknown> => {
   return (url: string) => {
     const result: ActionResult<unknown> = pipe(
@@ -15,5 +17,16 @@ const createFetch = (params: RequestInit = {}): Action<string, unknown> => {
 
 export const fetchGet = createFetch({
   method: "GET",
-  headers: [["content-type", "application/json"]],
+  headers: HEADERS,
 });
+
+export const fetchPost = <T>(url: string, body: T) => {
+  return pipe(
+    url,
+    createFetch({
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify(body),
+    })
+  );
+};

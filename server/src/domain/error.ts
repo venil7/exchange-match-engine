@@ -3,9 +3,9 @@ import { Errors } from "io-ts";
 import { PathReporter } from "io-ts/PathReporter";
 
 export enum ErrorType {
-  Generic,
-  Validation,
-  NotFound,
+  Generic = "Generic",
+  Validation = "Validation",
+  NotFound = "NotFound",
 }
 export type AppError = { type: ErrorType; msg?: string };
 

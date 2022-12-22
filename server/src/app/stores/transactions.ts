@@ -7,6 +7,10 @@ import { createGetTxs } from "../service/transactions";
 export const transactions = readable<Result<Tx[]>>(right([]), (set) => {
   const getTxs = createGetTxs();
 
+  (async () => {
+    set(await getTxs());
+  })();
+
   const interval = setInterval(async () => {
     set(await getTxs());
   }, 5000);

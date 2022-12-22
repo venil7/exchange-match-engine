@@ -1,6 +1,6 @@
 import { pipe } from "fp-ts/lib/function";
 import { chain } from "fp-ts/lib/TaskEither";
-import { TxDecoder, TxsDecoder } from "../../decoder/transaction";
+import { TxsDecoder } from "../../decoder/transaction";
 import { ActionResult, fromDecoder } from "../../domain/action";
 import { Tx } from "../../domain/transaction";
 import { createGetEnv } from "./env";

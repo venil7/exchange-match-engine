@@ -9,7 +9,5 @@ export type Price = [timesstamp: Date, price: number];
 
 export const prices = derived<typeof transactions, Result<Price[]>>(
   transactions,
-  ($txs) => {
-    return pipe($txs, map(amap((tx) => [tx.timestamp, tx.lhs.price] as Price)));
-  }
+  ($txs) => pipe($txs, map(amap((tx) => <Price>[tx.timestamp, tx.lhs.price])))
 );
