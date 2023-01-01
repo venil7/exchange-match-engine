@@ -38,7 +38,7 @@ const txsGetAction: Action<HandlerContext, Tx[]> = ({
     // fetch last 100 items of the list
     redis.lrange(TxFromStringDecoder as Type<Tx, string>)(
       `${env.ticker}/txs`,
-      -100,
+      -1000,
       -1
     )
   );

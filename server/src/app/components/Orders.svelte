@@ -12,6 +12,7 @@
 
   export let data: OrderRequest[];
   export let onAdd: (o: Order) => void;
+  export let onGenerate: () => void;
 
   const randomOrder = (): Order => {
     return {
@@ -25,9 +26,10 @@
 
 <Card>
   <CardHeader
-    >Orders <Button on:click={() => onAdd(randomOrder())}>[+]</Button
-    ></CardHeader
-  >
+    >Orders:
+    <Button on:click={() => onAdd(randomOrder())}>[+]</Button>
+    <Button on:click={() => onGenerate()}>[sine]</Button>
+  </CardHeader>
 
   <CardBody>
     <ListGroup>
