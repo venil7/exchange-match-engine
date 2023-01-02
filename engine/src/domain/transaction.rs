@@ -1,21 +1,20 @@
-use std::fmt::Display;
-
 use chrono::Utc;
 use redis::ToRedisArgs;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use uuid::Uuid;
 
-use super::OrderRequest;
+use super::Order;
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Tx {
     pub id: Uuid,
-    pub lhs: OrderRequest,
-    pub rhs: OrderRequest,
+    pub lhs: Order,
+    pub rhs: Order,
     pub timestamp: chrono::DateTime<Utc>,
 }
 
 impl Tx {
-    pub fn new(lhs: OrderRequest, rhs: OrderRequest) -> Tx {
+    pub fn new(lhs: Order, rhs: Order) -> Tx {
         Tx {
             lhs,
             rhs,

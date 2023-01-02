@@ -21,6 +21,22 @@ pub enum OrderDirection {
 
 #[derive(Clone, Copy, Debug, Hash, Default, PartialEq, Eq, PartialOrd, Deserialize, Serialize)]
 pub struct OrderRequest {
+    pub amount: i64,
+    pub price: i64,
+    pub direction: OrderDirection,
+}
+
+impl From<OrderRequest> for Order {
+    fn from(value: OrderRequest) -> Self {
+        match value.direction {
+            OrderDirection::Buy => buy_order(value.price, value.amount),
+            _ => sell_order(value.price, value.amount),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Hash, Default, PartialEq, Eq, PartialOrd, Deserialize, Serialize)]
+pub struct Order {
     pub id: Uuid,
     pub amount: i64,
     pub price: i64,
@@ -29,7 +45,7 @@ pub struct OrderRequest {
     pub direction: OrderDirection,
 }
 
-impl Display for OrderRequest {
+impl Display for Order {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
             "{direction:?} {amount}@{price}",
@@ -40,8 +56,8 @@ impl Display for OrderRequest {
     }
 }
 
-pub fn buy_order(price: i64, amount: i64) -> OrderRequest {
-    OrderRequest {
+pub fn buy_order(price: i64, amount: i64) -> Order {
+    Order {
         price,
         amount,
         id: Uuid::new_v4(),
@@ -50,8 +66,8 @@ pub fn buy_order(price: i64, amount: i64) -> OrderRequest {
         direction: OrderDirection::Buy,
     }
 }
-pub fn sell_order(price: i64, amount: i64) -> OrderRequest {
-    OrderRequest {
+pub fn sell_order(price: i64, amount: i64) -> Order {
+    Order {
         price,
         amount,
         id: Uuid::new_v4(),
@@ -60,16 +76,16 @@ pub fn sell_order(price: i64, amount: i64) -> OrderRequest {
         direction: OrderDirection::Sell,
     }
 }
-impl OrderRequest {
+impl Order {
     pub fn with_state(&self, state: OrderState) -> Self {
-        OrderRequest {
+        Order {
             state,
             ..self.clone()
         }
     }
 }
 
-impl Ord for OrderRequest {
+impl Ord for Order {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.direction == other.direction {
             return match self.direction {
@@ -89,7 +105,7 @@ impl Ord for OrderRequest {
     }
 }
 
-impl FromRedisValue for OrderRequest {
+impl FromRedisValue for Order {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
         match value {
             redis::Value::Data(bytes) => {
@@ -100,7 +116,7 @@ impl FromRedisValue for OrderRequest {
                 }
             }
 
-            _ => Err((ErrorKind::TypeError, "cant deserialize OrderRequest").into()),
+            _ => Err((ErrorKind::TypeError, "cant deserialize Order").into()),
         }
     }
 }
@@ -108,7 +124,7 @@ impl FromRedisValue for OrderRequest {
 #[cfg(test)]
 mod buy_orders_sorting_tests {
 
-    use super::{buy_order, sell_order, OrderRequest};
+    use super::{buy_order, sell_order, Order};
     use chrono::Days;
     use std::cmp::Ordering;
 
@@ -127,7 +143,7 @@ mod buy_orders_sorting_tests {
     #[test]
     fn same_buy_orders_sorted_by_timestamp_correctly() {
         let buy1 = buy_order(1, 1);
-        let buy2 = OrderRequest {
+        let buy2 = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(1)).unwrap(),
             ..buy1
         };
@@ -149,7 +165,7 @@ mod buy_orders_sorting_tests {
     #[test]
     fn same_sell_orders_sorted_by_timestamp_correctly() {
         let sell1 = sell_order(1, 1);
-        let sell2 = OrderRequest {
+        let sell2 = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(1)).unwrap(),
             ..sell1
         };

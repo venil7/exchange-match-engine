@@ -1,4 +1,4 @@
-use super::{order::OrderRequest, OrderDirection, Spread, Tx};
+use super::{order::Order, OrderDirection, Spread, Tx};
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -6,7 +6,7 @@ use std::{
 };
 use tracing::{info, trace};
 
-pub type PricePoint = BTreeSet<OrderRequest>;
+pub type PricePoint = BTreeSet<Order>;
 pub type OrderBookSide = BTreeMap<i64, PricePoint>;
 
 pub trait OrderBookSideImpl {
@@ -25,8 +25,7 @@ impl OrderBookSideImpl for OrderBookSide {
 }
 impl PricePointImpl for PricePoint {
     fn total_amount(&self) -> i64 {
-        self.iter()
-            .fold(0, |acc, order: &OrderRequest| acc + order.amount)
+        self.iter().fold(0, |acc, order: &Order| acc + order.amount)
     }
 
     // lhs is assumed to be bigger in total amount
@@ -43,7 +42,7 @@ impl PricePointImpl for PricePoint {
                     rhs.amount -= lhs.amount;
                     txs.push(Tx::new(
                         lhs,
-                        OrderRequest {
+                        Order {
                             amount: lhs.amount,
                             ..rhs
                         },
@@ -53,7 +52,7 @@ impl PricePointImpl for PricePoint {
                 Ordering::Greater => {
                     lhs.amount -= rhs.amount;
                     txs.push(Tx::new(
-                        OrderRequest {
+                        Order {
                             amount: rhs.amount,
                             ..lhs
                         },
@@ -126,7 +125,7 @@ impl OrderBook {
         txs
     }
 
-    pub fn add_order(&mut self, order: OrderRequest) {
+    pub fn add_order(&mut self, order: Order) {
         match order.direction {
             OrderDirection::Buy => self
                 .buys
@@ -146,14 +145,14 @@ impl OrderBook {
 mod order_book_tests {
 
     use super::OrderBook;
-    use crate::domain::{buy_order, sell_order, OrderRequest, PricePointImpl, Spread};
+    use crate::domain::{buy_order, sell_order, Order, PricePointImpl, Spread};
     use chrono::Days;
     use uuid::Uuid;
 
     #[test]
     fn order_total_amount_test() {
         let buy1 = buy_order(1, 3);
-        let buy2 = OrderRequest {
+        let buy2 = Order {
             id: Uuid::new_v4(),
             amount: 2,
             ..buy1
@@ -208,11 +207,11 @@ mod order_book_tests {
     #[test]
     fn sell_orders_of_the_same_rank_appear_historically() {
         let recent_sell = sell_order(1, 1);
-        let not_so_old_sell = OrderRequest {
+        let not_so_old_sell = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(1)).unwrap(),
             ..recent_sell
         };
-        let oldest_sell = OrderRequest {
+        let oldest_sell = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(2)).unwrap(),
             ..recent_sell
         };
@@ -231,11 +230,11 @@ mod order_book_tests {
     #[test]
     fn buy_orders_of_the_same_rank_appear_historically() {
         let recent_buy = buy_order(1, 1);
-        let not_so_old_buy = OrderRequest {
+        let not_so_old_buy = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(1)).unwrap(),
             ..recent_buy
         };
-        let oldest_buy = OrderRequest {
+        let oldest_buy = Order {
             timestamp: chrono::Utc::now().checked_sub_days(Days::new(2)).unwrap(),
             ..recent_buy
         };

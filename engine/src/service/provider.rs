@@ -4,11 +4,11 @@ use redis::{aio::AsyncStream, AsyncCommands, Client, RedisError};
 use std::pin::Pin;
 use tracing::{info, trace};
 
-use crate::domain::{OrderBook, OrderRequest, Tx};
+use crate::domain::{Order, OrderBook, Tx};
 
 #[async_trait]
 pub trait OrderProvider {
-    async fn next_order(&mut self) -> Result<OrderRequest>;
+    async fn next_order(&mut self) -> Result<Order>;
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()>;
     async fn load_order_book(&mut self) -> Result<OrderBook>;
     async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()>;
@@ -32,11 +32,10 @@ impl RedisProvider {
 
 #[async_trait]
 impl OrderProvider for RedisProvider {
-    async fn next_order(&mut self) -> Result<OrderRequest> {
+    async fn next_order(&mut self) -> Result<Order> {
         let key = format!("{ticker}/orders", ticker = self.ticker);
         trace!("send orders to {queue}", queue = key);
-        let payload: Result<(String, OrderRequest), RedisError> =
-            self.connection.blpop(key, 0).await;
+        let payload: Result<(String, Order), RedisError> = self.connection.blpop(key, 0).await;
         match payload {
             Ok((_, order)) => Ok(order),
             Err(err) => Err(anyhow::anyhow!("not valid order: {err}", err = err)),

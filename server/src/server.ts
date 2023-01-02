@@ -31,7 +31,7 @@ await pipe(
       () =>
         //@ts-expect-error
         (global.server = app.listen(env.port, () =>
-          console.log(`listening port ${env.port}, ${new Date()}`)
+          console.log(`http://localhost:${env.port}/api/`)
         ))
     )
   )
