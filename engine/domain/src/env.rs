@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 #[structopt(name = "exchange-matcher", about = "usage")]
 pub struct Opt {
     #[structopt(short, long, default_value = "abc")]

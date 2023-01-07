@@ -1,16 +1,24 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use domain::{Order, OrderBook, OrderRequest, Tx};
 use redis::{aio::AsyncStream, AsyncCommands, Client, RedisError};
 use std::pin::Pin;
-use tracing::{info, trace};
+use tracing::info;
 
-use crate::domain::{Order, OrderBook, Tx};
+pub enum OrdersOps {
+    Request,
+    //
+}
 
 #[async_trait]
-pub trait OrderProvider {
-    async fn next_order(&mut self) -> Result<Order>;
+pub trait OrderBookProvider {
+    async fn enqueue(&mut self, order_request: OrderRequest) -> Result<Order>;
+    async fn dequeue(&mut self) -> Result<Order>;
+
     async fn save_order_book(&mut self, book: &OrderBook) -> Result<()>;
     async fn load_order_book(&mut self) -> Result<OrderBook>;
+
+    // async fn get_order(&mut self, txs: &[Tx]) -> Result<()>;
     async fn mark_processed(&mut self, txs: &[Tx]) -> Result<()>;
 }
 
@@ -31,10 +39,19 @@ impl RedisProvider {
 }
 
 #[async_trait]
-impl OrderProvider for RedisProvider {
-    async fn next_order(&mut self) -> Result<Order> {
+impl OrderBookProvider for RedisProvider {
+    async fn enqueue(&mut self, order_request: OrderRequest) -> Result<Order> {
         let key = format!("{ticker}/orders", ticker = self.ticker);
-        trace!("send orders to {queue}", queue = key);
+        let order: Order = order_request.into();
+        let payload: Result<i32, RedisError> = self.connection.rpush(key, order).await;
+        match payload {
+            Ok(_) => Ok(order),
+            Err(err) => Err(anyhow::anyhow!("not valid order: {err}", err = err)),
+        }
+    }
+
+    async fn dequeue(&mut self) -> Result<Order> {
+        let key = format!("{ticker}/orders", ticker = self.ticker);
         let payload: Result<(String, Order), RedisError> = self.connection.blpop(key, 0).await;
         match payload {
             Ok((_, order)) => Ok(order),

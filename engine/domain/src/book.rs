@@ -145,7 +145,7 @@ impl OrderBook {
 mod order_book_tests {
 
     use super::OrderBook;
-    use crate::domain::{buy_order, sell_order, Order, PricePointImpl, Spread};
+    use crate::{buy_order, sell_order, Order, PricePointImpl, Spread};
     use chrono::Days;
     use uuid::Uuid;
 

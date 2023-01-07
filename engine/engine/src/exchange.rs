@@ -1,9 +1,9 @@
-use super::{OrderProvider, RedisProvider};
-use crate::domain::{Order, OrderBook};
+use super::{OrderBookProvider, RedisProvider};
+use domain::{Order, OrderBook};
 use anyhow::Result;
 use tracing::{error, trace};
 
-pub struct ExchangeService<Provider: OrderProvider> {
+pub struct ExchangeService<Provider: OrderBookProvider> {
     pub ticker: String,
     pub book: OrderBook,
     provider: Provider,
@@ -31,7 +31,7 @@ impl ExchangeService<RedisProvider> {
 
     pub async fn run(&mut self) -> Result<()> {
         loop {
-            match self.provider.next_order().await {
+            match self.provider.dequeue().await {
                 Ok(order) => {
                     self.process_order(order).await?;
                 }

@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use redis::{ErrorKind, FromRedisValue, RedisError};
+use redis::{ErrorKind, FromRedisValue, RedisError, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt::Display};
 use uuid::Uuid;
@@ -43,6 +43,17 @@ pub struct Order {
     pub timestamp: chrono::DateTime<Utc>,
     pub state: OrderState,
     pub direction: OrderDirection,
+}
+
+impl ToRedisArgs for Order {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        if let Ok(json) = serde_json::to_string(self) {
+            out.write_arg(json.as_bytes());
+        }
+    }
 }
 
 impl Display for Order {

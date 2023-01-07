@@ -1,9 +1,12 @@
 use anyhow::Result;
-use exchange::{domain::Opt, server::create_api};
+use api::create_api;
+use domain::Opt;
 use structopt::StructOpt;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use warp::Filter;
+
+mod api;
 
 #[tokio::main]
 async fn main() -> Result<()> {
