@@ -16,8 +16,8 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
-    let mut service = ExchangeService::try_new(&opt.ticker, &opt.redis).await?;
-    if let Err(e) = service.run().await {
+    let mut service = ExchangeService::new(&opt.ticker, &opt.redis)?;
+    if let Err(e) = service.run() {
         error!("service error {e:?}", e = e)
     }
 

@@ -15,7 +15,7 @@ bytes = "1.2"
 chrono = {version = "0.4", features = ["serde"]}
 domain = {path = "./domain"}
 engine = {path = "./engine"}
-redis = {version = "0.22", features = ["tokio-comp"]}
+redis = {version = "0.22", features = ["tokio-comp", "r2d2", "connection-manager", "json"]}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 # server = {path = "./server"}

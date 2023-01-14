@@ -1,15 +1,9 @@
 use anyhow::Result;
-use domain::{sell_order, Opt, Order, OrderRequest};
-// use service::{OrdersOps, RedisProvider};
-// use tokio::task;
+use domain::Opt;
 use warp::{Filter, Rejection, Reply};
 
+use crate::handlers;
 use crate::routes;
-
-async fn handler(order_request: OrderRequest) -> Result<impl warp::Reply, warp::Rejection> {
-    let order = Order::from(order_request);
-    Ok::<_, Rejection>(warp::reply::json(&order))
-}
 
 pub fn create_api(
     opt: &Opt,
@@ -26,14 +20,8 @@ pub fn create_api(
     //     Ok::<_, anyhow::Error>(())
     // });
 
-    let create_order = routes::post_order(&opt).and_then(handler);
-    let get_order = routes::get_order(&opt).and_then(|id| async move {
-        let order = Order {
-            id,
-            ..sell_order(1, 3)
-        };
-        Ok::<_, Rejection>(warp::reply::json(&order))
-    });
+    let create_order = routes::post_order(&opt).and_then(handlers::order_post_handler);
+    let get_order = routes::get_order(&opt).and_then(handlers::order_get_handler);
 
     let order_api = create_order.or(get_order);
 
